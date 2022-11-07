@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>INSTRUCTIONS FOR DEFACEMENT VERIFICATION</title>
+  <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      /*font-weight: normal;*/
+    }
+
+    h1 {
+      margin: 0.5em;
+      text-align: center;
+      font-weight: 900;
+      font-size: 1.9em;
+    }
+    h2 {
+      margin: 0.5em;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    p {
+      margin: auto;
+      padding: 2em;
+      max-width: 600px;
+    }
+
+
+    .center {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    button:active {
+      color: #518;
+    }
+    button {
+      padding: 1em;
+      text-decoration: underline;
+      cursor: pointer;
+      color: #00f;
+      border: 0;
+      background: none;
+      margin: 0.5em;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.5em;
+    }
+
+    input {
+      font-size: 1.5em;
+      padding: 0.25em;
+      text-align: center;
+      width: 6em;
+      margin-top: 1.25em;
+    }
+
+    .positive {
+      color: #008c17;
+    }
+
+    .negative {
+      color: #f00;
+    }
+  </style>
+</head>
+<body>
+  <h1>INSTRUCTIONS FOR DEFACEMENT VERIFICATION</h1>
+
+  <section id="noWeb3Browser" style="display: none; color: red;">
+    <h2>Please visit this page with a web3-enabled browser.</h2>
+  </section>
+
+  <section id="connect" style="display: none;">
+    <div class="center">
+      <button id="connect-button">CONNECT</button>
+    </div>
+  </section>
+
+  <section id="connected" style="display: none;">
+    <div class="center">
+      <input id="token-id" placeholder="Token ID" type="number">
+      <button id="verify-button">VERIFY</button>
+      <div id="result"></div>
+    </div>
+  </section>
+
+
+</body>
+
+<script src="./min.ethers.js"></script>
+<script type="text/javascript">
+  const $connect = document.getElementById('connect')
+  const $connectButton = document.getElementById('connect-button')
+  const $connected = document.getElementById('connected')
+  const $tokenId = document.getElementById('token-id')
+  const $verifyButton = document.getElementById('verify-button')
+  const $noWeb3Browser = document.getElementById('noWeb3Browser')
+  const $result = document.getElementById('result')
+
+  const env = 'goerli'
+
+
+  const CONTRACT = {
+    goerli: '0x48742D38a0809135EFd643c1150BfC13768C3907',
+    mainnet: ''
+  }[env]
+
+
+  ;(async () => {
+  const contractABI = ['function ownerOf(uint256 tokenId) external view returns (address)']
+
+
+
+  let isEthBrowser
+
+  if (window.ethereum) {
+    console.log('web3')
+    window.provider = new ethers.providers.Web3Provider(window.ethereum, 'any')
+    window.signer = provider.getSigner()
+    isEthBrowser = true
+
+  } else {
+    console.log('no Web3 detected')
+    isEthBrowser = false
+
+    $noWeb3Browser.style.display = 'initial'
+    $connect.style.display = 'none'
+
+    return
+  }
+
+  const Contract = new ethers.Contract(CONTRACT, contractABI, provider)
+
+  const isConnected = async () => {
+    if (!isEthBrowser) return false
+
+    try {
+      return await signer.getAddress()
+    } catch (e) {
+      return false
+    }
+  }
+
+
+  $connectButton.onclick = async () => {
+    $connectButton.innerHTML = 'Connecting...'
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }, []);
+      const address = await isConnected()
+      console.log(address)
+      onWalletConnected(address)
+
+    } catch (e) {
+      alert(`Error Connecting Wallet: ${e.message}`)
+      debugger
+      console.error(e)
+    }
+  }
+  let connectedWallet = await isConnected()
+
+  console.log('connected wallet:', connectedWallet)
+  if (connectedWallet) {
+    console.log(`Wallet connected: ${connectedWallet}`)
+    onWalletConnected(connectedWallet)
+  } else {
+    $connect.style.display = 'initial'
+  }
+
+  function onWalletConnected(wallet) {
+    $connect.style.display = 'none'
+    $connected.style.display = 'initial'
+    connectedWallet = wallet
+  }
+
+
+  $verifyButton.onclick = async () => {
+    const tokenId = $tokenId.value
+    console.log(tokenId)
+    const owner = await Contract.connect(signer).ownerOf(tokenId)
+    if (owner === connectedWallet) $result.innerHTML = '<h2 class="positive">VERIFIED</h2>'
+    else $result.innerHTML = '<h2 class="negative">UNVERIFIED</h2>'
+
+  }
+})()
+
+
+</script>
+</html>
