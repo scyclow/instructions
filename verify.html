@@ -94,6 +94,7 @@
       <input id="token-id" placeholder="Token ID" type="number">
       <button id="verify-button">VERIFY</button>
       <div id="result"></div>
+      <div id="transfers"></div>
     </div>
   </section>
 
@@ -109,8 +110,9 @@
   const $verifyButton = document.getElementById('verify-button')
   const $noWeb3Browser = document.getElementById('noWeb3Browser')
   const $result = document.getElementById('result')
+  const $transfers = document.getElementById('result')
 
-  const env = 'mainnet'
+  const env = 'goerli'
 
 
   const CONTRACT = {
@@ -120,7 +122,10 @@
 
 
   ;(async () => {
-  const contractABI = ['function ownerOf(uint256 tokenId) external view returns (address)']
+  const contractABI = [
+    'function ownerOf(uint256 tokenId) external view returns (address)',
+    'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
+  ]
 
 
 
@@ -188,13 +193,34 @@
 
   $verifyButton.onclick = async () => {
     const tokenId = $tokenId.value
-    console.log(tokenId)
     const owner = await Contract.connect(signer).ownerOf(tokenId)
-    if (owner === connectedWallet) $result.innerHTML = '<h2 class="positive">VERIFIED</h2>'
+    if (owner === connectedWallet) {
+      $result.innerHTML = '<h2 class="positive">VERIFIED</h2>'
+      const tokenTransferFilter = await Contract.filters.Transfer(null, null, ethers.BigNumber.from(tokenId))
+      const tokenTransfers = await Contract.queryFilter(tokenTransferFilter)
+      tokenTransfers.forEach(transfer => {
+        $transfers.innerHTML +=
+          transfer.args[0] === '0x0000000000000000000000000000000000000000'
+            ? `
+              <div>
+                MINTED TO ${shortAddr(transfer.args[1])}
+              </div>
+            `
+            : `
+              <div>
+                ${shortAddr(transfer.args[0])} -> ${shortAddr(transfer.args[1])}
+              <div>
+            `
+        console.log(JSON.stringify(transfer, null, 4))
+      })
+    }
     else $result.innerHTML = '<h2 class="negative">UNVERIFIED</h2>'
-
   }
 })()
+
+function shortAddr(addr) {
+  return addr.slice(0, 6) + '...' + addr.slice(-4)
+}
 
 
 </script>
